@@ -592,7 +592,7 @@ export const enUS = {
     markdownThemeTitle: "Markdown source theme",
     markdownThemeDescription: "Follow the app appearance or choose a fixed syntax highlighting theme for Markdown source editing.",
     editorThemeTitle: "Editor theme",
-    editorThemeDescription: "Choose a writing style for the note editor. Saved in this browser. Copy to WeChat uses the same style.",
+    editorThemeDescription: "Choose a writing style for the note editor. Saved in this browser.",
     editorContentAlignmentTitle: "Note content layout",
     editorContentAlignmentDescription: "Choose how note content is displayed across all notes on desktop. Saved in this browser.",
     editorContentAlignments: {
@@ -601,10 +601,6 @@ export const enUS = {
     },
     editorThemes: {
       default: "System default",
-      letter: "Letter",
-      guide: "Guide",
-      blueprint: "Blueprint",
-      journal: "Journal",
       "minimal-emerald": "Minimal Emerald",
       "outline-emerald": "Outline Emerald",
       "wechat-green": "WeChat Classic Green",
@@ -1532,10 +1528,6 @@ export const enUS = {
   audioPlayer: {
     label: "Audio player: {{filename}}",
     unavailable: "This audio format cannot be played on this device. You can still download it or open it externally.",
-  },
-  videoPlayer: {
-    label: "Video player: {{filename}}",
-    unavailable: "This video format cannot be played on this device. You can still download it or open it externally.",
   },
   editor: {
     imageScale: "Image scale",

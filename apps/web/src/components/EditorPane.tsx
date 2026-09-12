@@ -91,7 +91,7 @@ import {
   type NoteLinkSuggestionLabels,
 } from "./editor/NoteLinkSuggestion";
 import { WeChatIcon } from "./WeChatIcon";
-import { isNamedEditorTheme, useEditorTheme, useMarkdownTheme } from "./ThemeProvider";
+import { useEditorTheme, useMarkdownTheme } from "./ThemeProvider";
 import type { MarkdownSourceEditorRef } from "./editor/MarkdownSourceEditor";
 
 const MarkdownSourceEditor = lazy(() =>
@@ -161,7 +161,6 @@ import {
   type ShortcutSettings,
 } from "@/lib/app-helpers";
 import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
-import { isPaperEditorTheme, publishEditorCssVars, resolvePaperEditorTheme } from "@/lib/publish-layout";
 import { ThemeBlock } from "./ThemeBlock";
 import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
@@ -206,11 +205,6 @@ import {
   normalizeAiSelectionReplacement,
 } from "@/lib/ai-selection-replacement";
 import { getAttachmentFilenameFromLabel, getAttachmentResourceId } from "@/lib/attachment-links";
-import {
-  getAttachmentHoverTarget,
-  getAttachmentLinkFromEventTarget,
-  isInsideAttachmentHoverRegion,
-} from "./editor/attachment-resource-menu";
 import {
   IMAGE_MENU_HIDE_EVENT,
   IMAGE_MENU_SHOW_EVENT,
@@ -285,6 +279,13 @@ type AiInsertionTarget = {
   kind: "markdown" | "plain" | "rich";
   position: number;
 };
+
+const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
+  target instanceof Element
+    ? target.closest<HTMLAnchorElement>(
+        'a.edgeever-attachment-link, a[href*="/api/v1/resources/"], a[href^="edgeever-resource://"]'
+      )
+    : null;
 
 const getNoteLinkFromEventTarget = (target: EventTarget | null) =>
   target instanceof Element
@@ -1607,19 +1608,18 @@ const RichEditorPane = ({
 
   const showAttachmentMenu = useCallback((target: EventTarget | null) => {
     if (isMobileViewport) return false;
-    const hover = getAttachmentHoverTarget(target);
-    if (!hover) return false;
+    const link = getAttachmentLinkFromEventTarget(target);
+    if (!link) return false;
 
-    const href = hover.link.getAttribute("href") || "";
+    const href = link.getAttribute("href") || "";
     cancelResourceMenuHide();
     setNoteLinkHintPosition(null);
     showResourceMenu({
       kind: "attachment",
-      element: hover.toolbar ?? undefined,
       url: href,
-      filename: getAttachmentFilenameFromLabel(hover.link.textContent || "") || getAttachmentResourceId(href) || "attachment",
+      filename: getAttachmentFilenameFromLabel(link.textContent || "") || getAttachmentResourceId(href) || "attachment",
       resourceId: getAttachmentResourceId(href),
-      position: hover.toolbar ? { left: 0, top: 0, placement: "above" } : getNoteLinkHintPosition(hover.link),
+      position: getNoteLinkHintPosition(link),
     });
     return true;
   }, [cancelResourceMenuHide, isMobileViewport, showResourceMenu]);
@@ -1648,9 +1648,16 @@ const RichEditorPane = ({
   }, [showAttachmentMenu, showEditorLinkOpenHint]);
 
   const handleEditorMouseOut = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    const attachmentHover = getAttachmentHoverTarget(event.target);
-    if (attachmentHover) {
-      if (isInsideAttachmentHoverRegion(attachmentHover, event.relatedTarget)) return;
+    const attachmentLink = getAttachmentLinkFromEventTarget(event.target);
+    if (attachmentLink) {
+      const relatedTarget = event.relatedTarget;
+      if (
+        relatedTarget instanceof Node &&
+        (attachmentLink.contains(relatedTarget) ||
+          (relatedTarget instanceof Element && relatedTarget.closest("[data-edgeever-resource-menu]")))
+      ) {
+        return;
+      }
       scheduleResourceMenuHide();
       return;
     }
@@ -4197,17 +4204,27 @@ const RichEditorPane = ({
 
       <div
         ref={setEditorScrollContainerRef}
-        data-editor-theme={isNamedEditorTheme(editorTheme) ? editorTheme : "custom"}
+        data-editor-theme={
+          editorTheme === "default" ||
+          editorTheme === "minimal-emerald" ||
+          editorTheme === "outline-emerald" ||
+          editorTheme === "wechat-green" ||
+          editorTheme === "modern-mint" ||
+          editorTheme === "marxico"
+            ? editorTheme
+            : "custom"
+        }
         style={{
-          ...(isPaperEditorTheme(editorTheme)
-            ? publishEditorCssVars(editorTheme, resolvePaperEditorTheme(editorTheme)?.palette ?? "emerald")
-            : {
-                "--editor-body-font-size": `${MEMO_CONTENT_STYLE.body.fontSize}px`,
-                "--editor-body-line-height": String(MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize),
-                "--editor-paragraph-spacing": `${MEMO_CONTENT_STYLE.body.paragraphSpacing}px`,
-              }),
+          "--editor-body-font-size": `${MEMO_CONTENT_STYLE.body.fontSize}px`,
+          "--editor-body-line-height": String(MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize),
+          "--editor-paragraph-spacing": `${MEMO_CONTENT_STYLE.body.paragraphSpacing}px`,
           "--memo-content-divider-spacing": `${MEMO_CONTENT_STYLE.divider.marginVertical}px`,
-          ...(!isNamedEditorTheme(editorTheme)
+          ...(editorTheme !== "default" &&
+          editorTheme !== "minimal-emerald" &&
+          editorTheme !== "outline-emerald" &&
+          editorTheme !== "wechat-green" &&
+          editorTheme !== "modern-mint" &&
+          editorTheme !== "marxico"
             ? {
                 "--editor-theme-light-bg": customEditorTheme.light.background,
                 "--editor-theme-light-text": customEditorTheme.light.text,
@@ -4238,7 +4255,13 @@ const RichEditorPane = ({
               : "overflow-y-auto"
         )}
       >
-        {!isNamedEditorTheme(editorTheme) && customEditorTheme.customCss && (
+        {editorTheme !== "default" &&
+          editorTheme !== "minimal-emerald" &&
+          editorTheme !== "outline-emerald" &&
+          editorTheme !== "wechat-green" &&
+          editorTheme !== "modern-mint" &&
+          editorTheme !== "marxico" &&
+          customEditorTheme.customCss && (
             <style
               data-theme-custom-css
               data-original-css={customEditorTheme.customCss}
